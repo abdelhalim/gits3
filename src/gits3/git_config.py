@@ -25,22 +25,24 @@ import re
 
 class GitConfigParser(ConfigParser):
     
-    #
-    # Regular expressions for parsing section headers and options.
-    #
-    SECTCRE = re.compile(
-        r'\['                                 # [
-        r'(?P<section>[^]][^"]+)'             # very permissive!
-        r'(\"(?P<sub_section>[\w]+)\")?'      # very permissive!
-        r'\"?'
-        r'\]'                                 # ]
-        )
-    
-    OPTCRE = re.compile(
-        r'\s*(?P<option>[^:=\s][^:=]*)'       # very permissive!
-        r'\s*(?P<vi>[:=])\s*'                 # any number of space/tab,
-                                              # followed by separator
-                                              # (either : or =), followed
-                                              # by any # space/tab
-        r'(?P<value>.*)$'                     # everything up to eol
-        )
+     def __init__(self):
+        
+        ConfigParser.__init__(self)
+         
+        #
+        # Regular expressions for parsing section headers and options.
+        #
+        self.SECTCRE = re.compile(
+            r'\['                                 # [
+            r'(?P<header>[^]]+[^"]+)'              # very permissive!
+            r'(\"(?P<sub_section>[\w]+)\")?'      # very permissive!
+            r'\]'                                 # ]
+            )
+        self.OPTCRE = re.compile(
+            r'\s*(?P<option>[^:=\s][^:=]*)'       # very permissive!
+            r'\s*(?P<vi>[:=])\s*'                 # any number of space/tab,
+                                                  # followed by separator
+                                                  # (either : or =), followed
+                                                  # by any # space/tab
+            r'(?P<value>.*)$'                     # everything up to eol
+            )
