@@ -73,7 +73,7 @@ class Gits3(object):
         
         commits = self.get_commits(repo, local_object, [remote])
         objects = self.get_objects(repo, commits)
-        print objects
+#        print objects
         
         objects = set(objects)
         return objects

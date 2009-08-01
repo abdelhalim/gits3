@@ -20,10 +20,20 @@ Created on Jul 10, 2009
 
 @author: abdelhalim
 '''
-from s3_push import Gits3
+from local_repo import Gits3
+from git_config import GitConfig
+from amazon_s3_transport import S3Transport
+
 
 if __name__ == '__main__':
     
+    # should get current directory
+    root = '/Users/abdelhalim/dev/remote_git/scratch'
+    cfg = GitConfig(root)
+    url = cfg.get_remote_url()
+    transport = S3Transport(url)
+    print transport.get_pack_names()
+
     client = Gits3()
     
     updated_objects = client.get_updates()
@@ -31,5 +41,11 @@ if __name__ == '__main__':
     pack_name = client.generate_pack_name(updated_objects)
     
     client.write_pack(pack_name, updated_objects)
+    
+    transport.upload_pack('pack-' + pack_name + '.pack')
+    transport.upload_pack('pack-' + pack_name + '.idx')
+    
+    
+    
     
     pass
