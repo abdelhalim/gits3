@@ -32,20 +32,26 @@ if __name__ == '__main__':
     cfg = GitConfig(root)
     url = cfg.get_remote_url()
     transport = S3Transport(url)
-    print transport.get_pack_names()
+    
 
     client = Gits3()
     
     updated_objects = client.get_updates()
     
-    pack_name = client.generate_pack_name(updated_objects)
+    base = client.generate_pack_name(updated_objects)
     
-    client.write_pack(pack_name, updated_objects)
+    client.write_pack(base, updated_objects)
     
-    transport.upload_pack('pack-' + pack_name + '.pack')
-    transport.upload_pack('pack-' + pack_name + '.idx')
+    pack_name = 'pack-' + base + '.pack'
+    transport.upload_pack(pack_name)
+    transport.upload_pack('pack-' + base + '.idx')
     
+    packs = transport.get_pack_names()
+    packs_str = 'P ' + pack_name + '\n'
+    for pack in packs:
+        packs_str = packs_str + 'P ' + pack + '\n'
     
+    print packs_str
     
     
     pass
