@@ -27,6 +27,7 @@ from boto.s3.key import Key
 from git_config import GitConfig
 
 import re
+import os
 
 class S3Transport(object):
     
@@ -38,15 +39,48 @@ class S3Transport(object):
                              )
     
     def __init__(self, url):
-        self.s3Conn = S3Connection('AKIAITETCENIS3TKNVXQ','/taQuiG5b9AVDKbPA6AJo/w0F2Z3Oe/JAN+V1TJP')
+        
         self.url = url
         o = self.URL_PATTERN.match(self.url)
         if o:
             bucket_name = o.group('bucket')
             self.prefix = o.group('prefix')
+            
+            # read the jgit config file to access S3
+            config_file = o.group('config')
+            homedir = os.path.expanduser('~')
+            config_path = homedir + '/' + config_file
+#            print config_path
+            props = self.open_properties(config_path)
+            accesskey = props['accesskey']
+            secretkey = props['secretkey']
+            
+#            print 'accesskey=',accesskey
+#            print 'secretkey=',secretkey
+          
+           
+            self.s3Conn = S3Connection(accesskey,secretkey)
             self.bucket = self.s3Conn.get_bucket(bucket_name, False)
-            print self.bucket
-    
+#            print self.bucket
+            
+
+    def open_properties(self, properties_file):
+        propFile= file( properties_file, "rU" )
+        propDict= dict()
+        for propLine in propFile:
+            propDef= propLine.strip()
+            if len(propDef) == 0:
+                continue
+            if propDef[0] in ( '!', '#' ):
+                continue
+            punctuation= [ propDef.find(c) for c in ':= ' ] + [ len(propDef) ]
+            found= min( [ pos for pos in punctuation if pos != -1 ] )
+            name= propDef[:found].rstrip()
+            value= propDef[found:].lstrip(":= ").rstrip()
+            propDict[name]= value
+        propFile.close()
+        return propDict
+        
     
     def upload_pack(self, file_name):
         pack_full_path = self.prefix + '/objects/pack/'
