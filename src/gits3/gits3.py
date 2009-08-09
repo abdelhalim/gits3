@@ -24,19 +24,52 @@ from local_repo import Gits3
 from git_config import GitConfig
 from amazon_s3_transport import S3Transport
 
+import os
+import sys
+import getopt
 
-if __name__ == '__main__':
+
+
+def usage():
+    print 'Usage: gits3 push <remote> <refs>'
+
+
+def main(argv):
     
-    # should get current directory
-    root = '/Users/abdelhalim/dev/remote_git/scratch'
+    
+    # parse the arguments
+    
+    try:
+        opts, args = getopt.getopt(argv, 'h')
+    except getopt.GetoptError, err:
+        # print help information and exit:
+        print str(err) # will print something like "option -a not recognized"
+        usage()
+        sys.exit(2)
+        
+    if len(args) < 3:
+        usage()
+        sys.exit(2)
+    if args[0] != 'push':
+        usage()
+        sys.exit(2)    
+    
+    refs = args[2]
+    print 'Local Refs: ',refs 
+        
+        
+    # get current directory
+    root = os.getcwd()
+    # TODO Add check to see if the current folder is Git repo
+    
     cfg = GitConfig(root)
     url = cfg.get_remote_url()
     transport = S3Transport(url)
     
 
-    client = Gits3()
+    client = Gits3(root)
     
-    updated_objects = client.get_updates()
+    updated_objects = client.get_updates(refs)
     
     base = client.generate_pack_name(updated_objects)
     
@@ -53,5 +86,8 @@ if __name__ == '__main__':
     
     print packs_str
     
-    
     pass
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

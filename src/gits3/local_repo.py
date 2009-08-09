@@ -43,21 +43,21 @@ from dulwich.object_store import (
     ObjectStoreGraphWalker,
     )
 
-path = '/Users/abdelhalim/dev/remote_git/scratch'
+
 remote_ref = 'refs/remotes/s3/master'
-local_ref = 'refs/heads/master'
 
 class Gits3(object):
 
-    
+    def __init__(self, path):
+        self.path = path
 
     def open_repo(self, path):
         return Repo(path)
   
              
-    def get_updates(self):
+    def get_updates(self, local_ref):
         
-        repo = self.open_repo(path)        
+        repo = self.open_repo(self.path)        
         
         refs = repo.get_refs()
         for key, value in refs.iteritems():
