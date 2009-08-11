@@ -44,39 +44,43 @@ from dulwich.object_store import (
     )
 
 
-remote_ref = 'refs/remotes/s3/master'
 
 class Gits3(object):
 
     def __init__(self, path):
         self.path = path
+        self.open_repo(path)
 
     def open_repo(self, path):
-        return Repo(path)
+        self.repo = Repo(path)
   
+    def get_id(self, ref):
+        return self.repo.get_refs()[ref]
              
-    def get_updates(self, local_ref):
+    def get_updates(self, local_ref, tracking_ref):        
         
-        repo = self.open_repo(self.path)        
-        
-        refs = repo.get_refs()
+                
+        refs = self.repo.get_refs()
         for key, value in refs.iteritems():
            print key, value
         
         local = refs[local_ref]
-        remote = refs[remote_ref]
+        remote = refs[tracking_ref]
+        
+        if local == remote:
+            return None
+        
+        local_object = self.repo.get_object(local)
+        remote_object = self.repo.get_object(remote)
         
         
-        local_object = repo.get_object(local)
-        remote_object = repo.get_object(remote)
+        commits = self.get_commits(local_object, [remote])
+        objects = self.get_objects(commits)
+        print objects
+        filtered_objects = self.filter_objects(objects, remote_object)
         
-        
-        commits = self.get_commits(repo, local_object, [remote])
-        objects = self.get_objects(repo, commits)
-#        print objects
-        
-        objects = set(objects)
-        return objects
+        filtered_objects = set(filtered_objects)
+        return filtered_objects
         
        
        
@@ -87,8 +91,17 @@ class Gits3(object):
         # result = os.generate_pack_contents([local_object.sha()], [remote_object.sha()])
         
         
+    def filter_objects(self, objects, old_commit):
+        filtered = []
+        old_treeId = old_commit.tree
+        old_objects = self.get_objects_in_tree(old_treeId)
+        for object in objects:
+            if object not in old_objects:
+                filtered.append(object)
+                
+        return filtered
         
-    def get_commits(self, repo, interesting, uninteresting):
+    def get_commits(self, interesting, uninteresting):
         commits = [interesting]
         remaining = interesting.get_parents()
         
@@ -97,34 +110,34 @@ class Gits3(object):
             if pId in uninteresting:
                 continue    
             else:
-                parent = repo.get_object(pId)
+                parent = self.repo.get_object(pId)
                 commits.append(parent)
                 parents = parent.get_parents()
                 remaining.extend(parents)
         return commits
     
     
-    def get_objects(self, repo, commits):
+    def get_objects(self, commits):
         objects = []
         while commits:
             commit = commits.pop(0)
             objects.append(commit)
-            objects.extend(self.get_objects_in_tree(repo, commit.tree))
+            objects.extend(self.get_objects_in_tree(commit.tree))
         return objects    
             
             
     
-    def get_objects_in_tree(self, repo, treeId):
+    def get_objects_in_tree(self, treeId):
         objects = []
-        tree = repo.get_object(treeId)
+        tree = self.repo.get_object(treeId)
         objects.append(tree)
         entries = tree.entries()
         for entryId in entries:
             # get the entry's sha 
             objectId = entryId[2]
-            object = repo.get_object(objectId) 
+            object = self.repo.get_object(objectId) 
             if isinstance(object, Tree):
-                objects.extend(self.get_objects_in_tree(repo, objectId))
+                objects.extend(self.get_objects_in_tree(objectId))
             else:
                 objects.append(object)    
         return objects
@@ -133,10 +146,10 @@ class Gits3(object):
         m = hashlib.sha1()
         for object in objects:
             sha1 = object.sha().hexdigest()
-            print sha1
+#            print sha1
             m.update(sha1)
         file_name = m.hexdigest()
-        print 'File Name is ', file_name
+#        print 'File Name is ', file_name
         return file_name
     
     
@@ -144,3 +157,21 @@ class Gits3(object):
          write_pack('pack-' + pack_name, [(x, "") for x in objects], 
             len(objects))
         
+    def find_tracking_ref_names(self, fetch, refs):
+        if fetch[0] == '+':
+            fetch = fetch[1:]
+        tmp = fetch.split(':')
+        src = tmp[0]
+        dst = tmp[1]
+        
+        # TODO double check that both src and dst have wild cards, or both don't
+        
+        # match the source with refs
+        if src.endswith('*') and refs.startswith(src[:-1]):
+            return self.expand_from_src(src, dst, refs)
+        else:
+            return dst                                         
+            
+        
+    def expand_from_src(self, src, dst, refs):
+        return dst[:-1] + refs[len(src)-1:]

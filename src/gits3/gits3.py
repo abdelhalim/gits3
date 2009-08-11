@@ -19,6 +19,9 @@
 Created on Jul 10, 2009
 
 @author: abdelhalim
+
+
+
 '''
 from local_repo import Gits3
 from git_config import GitConfig
@@ -33,6 +36,18 @@ import getopt
 def usage():
     print 'Usage: gits3 push <remote> <refs>'
 
+
+def get_root():
+    
+    # get current directory
+    root = os.getcwd()
+    # check to see if the current folder is Git repo
+    git_dir = os.path.join(root, ".git")
+    if not os.path.exists(git_dir):
+        print "Should run in git repo"
+        sys.exit(2)
+    
+    return root
 
 def main(argv):
     
@@ -58,33 +73,46 @@ def main(argv):
     print 'Local Refs: ',refs 
         
         
-    # get current directory
-    root = os.getcwd()
-    # TODO Add check to see if the current folder is Git repo
+    root = get_root()
+    
     
     cfg = GitConfig(root)
     url = cfg.get_remote_url()
+    fetch = cfg.get_fetch()
     transport = S3Transport(url)
     
 
     client = Gits3(root)
+    tracking_ref = client.find_tracking_ref_names(fetch, refs)
+    print fetch
     
-    updated_objects = client.get_updates(refs)
     
-    base = client.generate_pack_name(updated_objects)
+    updated_objects = client.get_updates(refs, tracking_ref)
     
-    client.write_pack(base, updated_objects)
-    
-    pack_name = 'pack-' + base + '.pack'
-    transport.upload_pack(pack_name)
-    transport.upload_pack('pack-' + base + '.idx')
-    
-    packs = transport.get_pack_names()
-    packs_str = 'P ' + pack_name + '\n'
-    for pack in packs:
-        packs_str = packs_str + 'P ' + pack + '\n'
-    
-    print packs_str
+    if updated_objects == None:
+        print 'Up to date'
+    else:
+        base = client.generate_pack_name(updated_objects)
+        
+        client.write_pack(base, updated_objects)
+        
+        pack_name = 'pack-' + base + '.pack'
+        transport.upload_pack(pack_name)
+        transport.upload_pack('pack-' + base + '.idx')
+        
+        packs = transport.get_pack_names()
+        packs_str = 'P ' + pack_name + '\n'
+        for pack in packs:
+            packs_str = packs_str + 'P ' + pack + '\n'
+        
+        print packs_str
+        
+        transport.upload_string('objects/info/packs', packs_str)
+        transport.upload_string(refs, client.get_id(refs))
+        transport.upload_string('info/refs', client.get_id(refs) + '\t' + refs + '\n')
+        
+        
+        # update local tracking refs
     
     pass
 
