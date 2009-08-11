@@ -30,6 +30,9 @@ class GitConfig:
         url = self.cfg.get('remote', 'url')
         return url
 
+    def get_fetch(self):
+        fetch = self.cfg.get('remote', 'fetch')
+        return fetch
         
 class GitConfigParser(ConfigParser):
     
