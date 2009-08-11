@@ -45,6 +45,9 @@ class S3Transport(object):
         if o:
             bucket_name = o.group('bucket')
             self.prefix = o.group('prefix')
+            if self.prefix.endswith('/'):
+                self.prefix = self.prefix[:-1]
+            
             
             # read the jgit config file to access S3
             config_file = o.group('config')
@@ -89,7 +92,17 @@ class S3Transport(object):
     def upload_file(self, prefix, file_name):
         new_key = self.bucket.new_key(prefix + file_name)
         new_key.set_contents_from_file(open(file_name))
+        new_key.set_acl('public-read')
         pass
+    
+    def upload_string(self, path, contents):
+        key_path = self.prefix + '/' + path
+        key = self.bucket.get_key(key_path)
+        if not key:
+            key = self.bucket.new_key(key_path)
+        key.set_contents_from_string(contents)
+        key.set_acl('public-read')
+        
             
     def get_pack_names(self):
         
