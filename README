@@ -1,0 +1,8 @@
+
+gits3
+git push over Amazon S3
+
+Dependencies:
+- boto (Amazon Web Services Python library) http://code.google.com/p/boto/
+- dulwich (git implementation in Python) http://samba.org/~jelmer/dulwich/
+
