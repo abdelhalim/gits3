@@ -65,30 +65,30 @@ class Gits3(object):
            print key, value
         
         local = refs[local_ref]
-        remote = refs[tracking_ref]
+        try:
+            remote = refs[tracking_ref]
+        except KeyError:
+            remote = None
+            
         
         if local == remote:
             return None
         
         local_object = self.repo.get_object(local)
-        remote_object = self.repo.get_object(remote)
         
         
         commits = self.get_commits(local_object, [remote])
         objects = self.get_objects(commits)
         print objects
-        filtered_objects = self.filter_objects(objects, remote_object)
+        
+        if remote:
+            remote_object = self.repo.get_object(remote)
+            filtered_objects = self.filter_objects(objects, remote_object)
+        else:
+            filtered_objects = objects
         
         filtered_objects = set(filtered_objects)
         return filtered_objects
-        
-       
-       
-        # os = repo.object_store
-        # remote_wlkr = repo.get_graph_walker(repo.refs.as_dict('refs/remotes/s3').values())
-        # local_wlkr = repo.get_graph_walker()
-        
-        # result = os.generate_pack_contents([local_object.sha()], [remote_object.sha()])
         
         
     def filter_objects(self, objects, old_commit):

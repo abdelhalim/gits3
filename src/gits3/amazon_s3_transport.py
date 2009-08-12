@@ -120,3 +120,62 @@ class S3Transport(object):
                         packs.append(key.name[len(path)+1:len(key.name)])
             
             return packs
+        
+    def get_advertised_refs(self):
+        refs = {}
+        
+        
+        if self.bucket:
+            # get loose refs
+            path = self.prefix + '/refs'
+            keys = self.bucket.list(path)
+            
+            for key in keys:
+                name = key.name[len(self.prefix + '/'):]
+                s = key.get_contents_as_string()
+                ref = self.get_ref(s, refs)
+                refs[name] = {name:ref}
+                
+            # read HEAD
+            path = self.prefix + '/HEAD'
+            key = self.bucket.get_key(path)
+            if key:
+                s = key.get_contents_as_string()
+                ref = self.get_ref(s, refs)
+                refs['HEAD'] = {'HEAD':ref}
+           
+        return refs
+    
+    def get_ref(self, s, refs):
+        if s.startswith('ref: '):
+            target = s[len('ref: '):]
+            target = target.strip()
+            try:
+                target_ref = refs[target]
+            except KeyError:
+                target_ref = None
+                
+            if target_ref:
+                return target_ref[target]
+            
+        return s
+    
+    
+    def create_new_repo(self, refs):
+        if self.bucket:
+            
+            # .git/config file
+            config_str = '[core]\n' + '\trepositoryformatversion = 0\n'
+            key = self.bucket.new_key(self.prefix + '/config')
+            key.set_contents_from_string(config_str)
+            key.set_acl('public-read')
+            
+            # .git/HEAD
+            if refs.startswith('refs/heads'):
+                head_str = 'ref: ' + refs + '\n'
+            else:
+                head_str = 'refs: refs/heads/' + refs + '\n'
+                
+            key = self.bucket.new_key(self.prefix + '/HEAD')
+            key.set_contents_from_string(head_str)
+            key.set_acl('public-read')

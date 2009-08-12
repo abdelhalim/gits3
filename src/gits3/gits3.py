@@ -80,12 +80,15 @@ def main(argv):
     url = cfg.get_remote_url()
     fetch = cfg.get_fetch()
     transport = S3Transport(url)
-    
 
+    
+    advertised_refs = transport.get_advertised_refs()
+
+    if len(advertised_refs) == 0:
+        transport.create_new_repo(refs)
+    
     client = Gits3(root)
     tracking_ref = client.find_tracking_ref_names(fetch, refs)
-    print fetch
-    
     
     updated_objects = client.get_updates(refs, tracking_ref)
     
